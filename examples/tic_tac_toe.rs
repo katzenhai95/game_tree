@@ -9,6 +9,15 @@ enum TicTacToePlayer {
     Defensive,
 }
 
+impl TicTacToePlayer {
+    fn swap(&self) -> TicTacToePlayer {
+        match self {
+            Self::Offensive => Self::Defensive,
+            Self::Defensive => Self::Offensive,
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Eq)]
 enum TicTacToeResult {
     Unknown,
@@ -46,7 +55,7 @@ impl fmt::Display for TicTacToeStatus {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 struct TicTacToeSituation {
     player: TicTacToePlayer,
     current_move_player: TicTacToePlayer,
@@ -221,17 +230,14 @@ impl crate::SituationOps for TicTacToeSituation {
 
     fn proc_move(&mut self, next_move: &Self::Move) {
         self.situation[next_move.pos] = Some(next_move.player.clone()).into();
-        self.current_move_player = match self.current_move_player {
-            TicTacToePlayer::Offensive => TicTacToePlayer::Defensive,
-            TicTacToePlayer::Defensive => TicTacToePlayer::Offensive,
-        }
+        self.current_move_player = self.current_move_player.swap();
     }
 
     fn with_move(&self, next_move: &Self::Move) -> Self {
-        let mut new_situation = self.clone();
-        new_situation.current_move_player = match self.current_move_player {
-            TicTacToePlayer::Defensive => TicTacToePlayer::Offensive,
-            TicTacToePlayer::Offensive => TicTacToePlayer::Defensive,
+        let mut new_situation = TicTacToeSituation {
+            player: self.player.clone(),
+            current_move_player: self.current_move_player.swap(),
+            situation: self.situation.clone(),
         };
         new_situation.situation[next_move.pos] = Some(next_move.player.clone()).into();
         new_situation

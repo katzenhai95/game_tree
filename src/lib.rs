@@ -5,7 +5,7 @@ pub mod game_tree {
     where
         T: SituationOps,
     {
-        data: T,
+        data: Option<T>,
         cur_move: Option<T::Move>,
         is_max_layer: bool,
         cost: i32,
@@ -16,13 +16,13 @@ pub mod game_tree {
     where
         T: SituationOps,
     {
-        fn new(data: T, cur_move: Option<T::Move>, is_max_layer: bool) -> Self {
+        fn new(data: Option<T>, cur_move: Option<T::Move>, is_max_layer: bool) -> Self {
             Self {
                 data: data,
                 cur_move: cur_move,
                 is_max_layer: is_max_layer,
                 cost: 0,
-                children: vec![],
+                children: Vec::with_capacity(0),
             }
         }
     }
@@ -45,7 +45,7 @@ pub mod game_tree {
 
     impl<T> GameTree<T>
     where
-        T: SituationOps + Clone,
+        T: SituationOps,
     {
         pub fn new(search_depth: u32, init_situation: T) -> Self {
             Self {
@@ -63,7 +63,7 @@ pub mod game_tree {
         }
 
         pub fn get_next_move(&self) -> Option<T::Move> {
-            let mut root = GameTreeNode::new(self.cur_situation.clone(), None, true);
+            let mut root = GameTreeNode::new(None, None, true);
             self.build_game_tree(&mut root, self.search_depth);
             match self.min_max_search(&mut root) {
                 Some(idx) => Some(root.children.remove(idx).cur_move.unwrap()),
@@ -75,23 +75,31 @@ pub mod game_tree {
             if search_depth == 0 {
                 return;
             }
-            let mut children =
-                Vec::from_iter(root.data.get_avilable_move().into_iter().map(|next_move| {
+            let cur_situation = match &root.data {
+                Some(data) => &data,
+                None => &self.cur_situation,
+            };
+            root.children = Vec::from_iter(cur_situation.get_avilable_move().into_iter().map(
+                |next_move| {
                     GameTreeNode::new(
-                        root.data.with_move(&next_move),
+                        Some(cur_situation.with_move(&next_move)),
                         Some(next_move),
                         !root.is_max_layer,
                     )
-                }));
-            root.children.append(&mut children);
+                },
+            ));
             for child in &mut root.children {
                 self.build_game_tree(child, search_depth - 1);
             }
         }
 
         fn min_max_search<'a>(&self, root: &mut GameTreeNode<T>) -> Option<usize> {
+            let cur_situation = match &root.data {
+                Some(data) => &data,
+                None => &self.cur_situation,
+            };
             if root.children.is_empty() {
-                root.cost = root.data.calc_cost();
+                root.cost = cur_situation.calc_cost();
                 return None;
             }
             for child in &mut root.children {
